@@ -1,4 +1,3 @@
-# app/controllers/recipes_controller.py
 from app.database import fetch_recipes_from_api
 
 def get_recommended_recipes(detected_ingredients: list):

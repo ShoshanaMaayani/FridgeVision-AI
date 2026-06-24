@@ -1,16 +1,22 @@
-# app/main.py
 
 from fastapi import FastAPI
-# ייבוא הראוטרים שלנו
-from app.routes import detection_route
-from app.routes import recipes_route
+from fastapi.middleware.cors import CORSMiddleware
+from app.routes import detection_route, recipes_route
 
 app = FastAPI()
 
-# מחברים את הראוטרים תחת הקידומת /api
+# זה החלק שפותר את בעיית ה-API Connection:
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # מאפשר לכל פורט (כולל 5173) להתחבר
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(detection_route.router, prefix="/api/detection", tags=["Detection"])
 app.include_router(recipes_route.router, prefix="/api/recipes", tags=["Recipes"])
 
 @app.get("/")
-def read_root():
-    return {"status": "השרת פועל בהצלחה!", "project": "Smart Recipe Recommender"}
+def health_check():
+    return {"status": "Server is up and running"}
