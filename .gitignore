@@ -1,2 +1,12 @@
 venv/
 node_modules/
+# התעלמות מקבצי מודלים
+*.pt
+*.pth
+
+# התעלמות מתיקיות אימון ומידע
+/server/runs/
+/server/dataset/
+
+# התעלמות מצילומי מסך
+*.png
