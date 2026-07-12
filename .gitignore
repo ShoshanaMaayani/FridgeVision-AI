@@ -10,3 +10,5 @@ node_modules/
 
 # התעלמות מצילומי מסך
 *.png
+train_model.py
+best.pt
