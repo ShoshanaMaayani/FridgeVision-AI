@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-// כתובת שרת ה-FastAPI שלך
+// Your FastAPI server URL
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 function App() {
@@ -10,22 +10,19 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
 
-  // ניהול המצרכים לפי רמות ביטחון
+  // Ingredient management by confidence level
   const [detectedData, setDetectedData] = useState({ sure: [], unsure: [] });
-  const [confirmedItems, setConfirmedItems] = useState([]); // הרשימה הסופית שהמשתמש מאשר
-  const [customItem, setCustomItem] = useState(''); // שדה הוספה ידנית
+  const [confirmedItems, setConfirmedItems] = useState([]); // Final list confirmed by user
+  const [customItem, setCustomItem] = useState(''); // Manual input field
 
   const [recipes, setRecipes] = useState([]);
   const [error, setError] = useState('');
 
+  // Recipe details
+  const [selectedRecipe, setSelectedRecipe] = useState(null); // Selected recipe for details
+  const [recipeLoading, setRecipeLoading] = useState(false); // Recipe details loading state
 
- // חדשששש
-  const [selectedRecipe, setSelectedRecipe] = useState(null); // מתכון שנבחר לפרטים
-  const [recipeLoading, setRecipeLoading] = useState(false); // לטעינת פרטי המתכון
-
-
-
-  // מתחיל חדש 
+  // Fetch recipe details
   const fetchRecipeDetails = async (recipeId) => {
     setLoading(true);
     try {
@@ -33,17 +30,15 @@ function App() {
       if (response.data.success) {
         setSelectedRecipe(response.data.recipe);
       } else {
-        setError('לא הצלחנו לשלוף את פרטי המתכון.');
+        setError('Could not retrieve recipe details.');
       }
     } catch (err) {
-      console.error("שגיאה בשליפת פרטי מתכון:", err);
-      setError('שגיאה בתקשורת עם השרת.');
+      console.error("Error fetching recipe details:", err);
+      setError('Error communicating with the server.');
     } finally {
       setLoading(false);
     }
   };
-  // נגמר חדש
-
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -81,7 +76,7 @@ function App() {
 
   const uploadAndDetect = async () => {
     if (!image) {
-      setError('אנא העלה או גרור תמונה תחילה.');
+      setError('Please upload or drag an image first.');
       return;
     }
     setLoading(true);
@@ -98,29 +93,29 @@ function App() {
       });
 
       if (detectResponse.data.status === 'success') {
-        // תמיכה גם במבנה החדש (sure/unsure) וגם בישן למניעת באגים
+        // Fallback for both new structure (sure/unsure) and old structure to prevent bugs
         const sureList = detectResponse.data.sure || detectResponse.data.detected_ingredients || [];
         const unsureList = detectResponse.data.unsure || [];
 
         setDetectedData({ sure: sureList, unsure: unsureList });
 
-        // מוסיפים לרשימה המאושרת אוטומטית אך ורק את הפריטים שהמודל בטוח בהם!
+        // Auto-add high-confidence items to the confirmed list
         setConfirmedItems([...sureList]);
 
         if (sureList.length === 0 && unsureList.length === 0) {
-          setError('לא זוהו פירות או ירקות בתמונה. אנא ודאו שהפריטים פרוסים בבירור וצלמו שוב.');
+          setError('No fruits or vegetables detected in the image. Please ensure items are spread out clearly and try again.');
         }
 
       }
     } catch (err) {
       console.error("Full Error Object:", err);
-      setError(`שגיאת תקשורת: ${err.response?.data?.detail || err.message}`);
+      setError(`Communication error: ${err.response?.data?.detail || err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // הוספה או הסרה בלחיצה על תגית
+  // Add/remove item on tag click
   const toggleItem = (itemName) => {
     if (confirmedItems.includes(itemName)) {
       setConfirmedItems(confirmedItems.filter(i => i !== itemName));
@@ -129,7 +124,7 @@ function App() {
     }
   };
 
-  // הוספת מצרך ידני מהשדה התחתון
+  // Add custom manual item
   const handleAddCustomItem = (e) => {
     e.preventDefault();
     const cleanItem = customItem.trim();
@@ -139,10 +134,10 @@ function App() {
     }
   };
 
-  // שליפת מתכונים אך ורק לפי הרשימה שהמשתמש אישר סופית
+  // Fetch recommended recipes
   const fetchRecipes = async () => {
     if (confirmedItems.length === 0) {
-      setError('אנא אשר או הוסף לפחות מצרך אחד לפני החיפוש.');
+      setError('Please confirm or add at least one ingredient before searching.');
       return;
     }
 
@@ -155,37 +150,36 @@ function App() {
       if (recipesResponse.data.success) {
         setRecipes(recipesResponse.data.recipes);
       } else {
-        setError(recipesResponse.data.message || 'לא נמצאו מתכונים מתאימים.');
+        setError(recipesResponse.data.message || 'No matching recipes found.');
       }
     } catch (err) {
       console.error(err);
-      setError('שגיאה בשליפת המתכונים מהשרת.');
+      setError('Error fetching recipes from the server.');
     } finally {
       setLoading(false);
     }
   };
 
-  // בדיקה האם יש מצרכים שהוספו ידנית (שלא הגיעו מה-AI) כדי להציג אותם גם
+  // Check manual additions
   const customAddedItems = confirmedItems.filter(
     item => !detectedData.sure.includes(item) && !detectedData.unsure.includes(item)
   );
 
   return (
-    <div style={styles.container} dir="rtl">
+    <div style={styles.container} dir="ltr">
       <header style={styles.header}>
         <div style={styles.badgeTop}>
           AI Fresh Produce Scan
         </div>
-        <h1 style={styles.title}>AI לזיהוי פירות וירקות</h1>
+        <h1 style={styles.title}>AI Fruit & Vegetable Detection</h1>
         <p style={styles.subtitle}>
-          העלו תמונה של הפירות והירקות שלכם,
-          ותנו לבינה המלאכותית לזהות אותם ולהמליץ על מתכונים שמתאימים בדיוק למה שיש אצלכם בבית.        </p>
+          Upload a picture of your fruits and vegetables, and let AI identify them to recommend custom recipes based on what you have at home.
+        </p>
       </header>
-
 
       <main style={styles.main}>
 
-        {/* אזור העלאת התמונה */}
+        {/* Drop Zone Area */}
         <div
           style={{
             ...styles.dropZone,
@@ -202,14 +196,14 @@ function App() {
           <label htmlFor="file-upload" style={styles.fileLabel}>
             {preview ? (
               <div style={styles.previewContainer}>
-                <img src={preview} alt="תצוגה מקדימה" style={styles.imagePreview} />
-                <p style={styles.changeImageText}>👆 לחץ שוב להחלפת תמונה</p>
+                <img src={preview} alt="Preview" style={styles.imagePreview} />
+                <p style={styles.changeImageText}>👆 Click again to change image</p>
               </div>
             ) : (
               <div style={styles.uploadPrompt}>
                 <div style={styles.iconsRow}>📸</div>
-                <p style={styles.uploadMainText}>גרור ושחרר תמונה של פירות וירקות כאן</p>
-                <p style={styles.uploadSubText}>או לחץ לבחירת תמונה מתוך המכשיר</p>
+                <p style={styles.uploadMainText}>Drag & drop an image of fruits and vegetables here</p>
+                <p style={styles.uploadSubText}>or click to select from your device</p>
               </div>
             )}
           </label>
@@ -225,24 +219,24 @@ function App() {
               boxShadow: loading ? 'none' : '0 4px 12px rgba(46, 46, 46, 0.15)'
             }}
           >
-            {loading ? ' סורק ומזהה פירות וירקות בתמונה...' : ' פענח פירות וירקות בתמונה!'}
+            {loading ? ' Scanning and identifying ingredients...' : ' Analyze Image!'}
           </button>
         )}
 
         {error && <div style={styles.errorCard}>⚠️ {error}</div>}
 
-        {/* שלב הביניים החכם: אישור מצרכים לפני מתכונים */}
+        {/* Approval Section */}
         {(detectedData.sure.length > 0 || detectedData.unsure.length > 0 || customAddedItems.length > 0) && (
           <div style={styles.approvalSection}>
             <div style={styles.sectionHeader}>
-              <h3 style={styles.sectionTitle}> אישור פירות וירקות שזוהו</h3>
-              <p style={styles.sectionSubtitle}>לחצו על פריט כדי להוסיף או להסיר אותו מסל ההכנה שלכם:</p>
+              <h3 style={styles.sectionTitle}> Confirm Detected Ingredients</h3>
+              <p style={styles.sectionSubtitle}>Click an item to add or remove it from your cooking list:</p>
             </div>
 
-            {/* פריטים בוודאות גבוהה */}
+            {/* High confidence items */}
             {detectedData.sure.length > 0 && (
               <div style={styles.categoryBlock}>
-                <p style={styles.categoryTitle}> זוהו בוודאות גבוהה:</p>
+                <p style={styles.categoryTitle}> High confidence detections:</p>
                 <div style={styles.tagsContainer}>
                   {detectedData.sure.map((item, idx) => {
                     const isSelected = confirmedItems.includes(item);
@@ -265,10 +259,10 @@ function App() {
               </div>
             )}
 
-            {/* פריטים בספק */}
+            {/* Low confidence items */}
             {detectedData.unsure.length > 0 && (
               <div style={styles.categoryBlock}>
-                <p style={styles.categoryTitle}> זוהו בספק (ודאו אם אכן קיימים אצלכם):</p>
+                <p style={styles.categoryTitle}> Unsure detections (verify if you have these):</p>
                 <div style={styles.tagsContainer}>
                   {detectedData.unsure.map((item, idx) => {
                     const isSelected = confirmedItems.includes(item);
@@ -292,10 +286,10 @@ function App() {
               </div>
             )}
 
-            {/* פריטים שהוספו ידנית */}
+            {/* Manually added items */}
             {customAddedItems.length > 0 && (
               <div style={styles.categoryBlock}>
-                <p style={styles.categoryTitle}> הוספתם ידנית:</p>
+                <p style={styles.categoryTitle}> Manually Added:</p>
                 <div style={styles.tagsContainer}>
                   {customAddedItems.map((item, idx) => (
                     <span
@@ -308,23 +302,23 @@ function App() {
                         borderColor: '#38bdf8'
                       }}
                     >
-                      ✅ {item} (הסר)
+                      ✅ {item} (Remove)
                     </span>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* טופס הוספה ידנית מהירה */}
+            {/* Manual input form */}
             <form onSubmit={handleAddCustomItem} style={styles.customAddForm}>
               <input
                 type="text"
-                placeholder="חסר פרי או ירק לרשימה? הוסיפו אותו כאן..."
+                placeholder="Missing an ingredient? Add it manually here..."
                 value={customItem}
                 onChange={(e) => setCustomItem(e.target.value)}
                 style={styles.customInput}
               />
-              <button type="submit" style={styles.addBtn}>+ הוסף לפריטים</button>
+              <button type="submit" style={styles.addBtn}>+ Add Item</button>
             </form>
 
             <button
@@ -336,39 +330,17 @@ function App() {
                 boxShadow: loading || confirmedItems.length === 0 ? 'none' : '0 4px 12px rgba(46, 46, 46, 0.15)'
               }}
             >
-              {loading ? ' מרכיב לכם מנות נהדרות...' : ` מצא לי מתכונים עם הירקות והפירות שאשרתי (${confirmedItems.length})`}
+              {loading ? ' Crafting delicious recipes...' : ` Find Recipes with Confirmed Ingredients (${confirmedItems.length})`}
             </button>
           </div>
         )}
 
-        {/* הצגת כרטיסיות המתכונים */}
+        {/* Recommended Recipes Grid */}
         {recipes.length > 0 && (
           <div style={styles.recipesSection}>
-            <h3 style={styles.recipesMainTitle}>✨ המתכונים המומלצים ביותר עבורכם:</h3>
+            <h3 style={styles.recipesMainTitle}>✨ Top Recommended Recipes for You:</h3>
             <div style={styles.recipesGrid}>
               {recipes.map((recipe) => (
-                // <div key={recipe.id} style={styles.recipeCard}>
-                //   {recipe.image && <img src={recipe.image} alt={recipe.title} style={styles.recipeImage} />}
-                //   <div style={styles.recipeContent}>
-                //     <div style={styles.recipeHeaderRow}>
-                //       <h4 style={styles.recipeTitle}>{recipe.title}</h4>
-                //       <span style={{ ...styles.matchBadge, backgroundColor: recipe.match_score > 70 ? '#dcfce7' : '#fef9c3', color: recipe.match_score > 70 ? '#15803d' : '#a16207' }}>
-                //         {recipe.match_score}% התאמה
-                //       </span>
-                //     </div>
-                //     <div style={{ marginTop: '14px' }}>
-                //       <p style={styles.ingredientListTitle}>🥗 פירות וירקות קיימים:</p>
-                //       <p style={styles.ingredientText}>{recipe.used_ingredients.join(', ')}</p>
-                //     </div>
-                //     <div style={{ marginTop: '10px' }}>
-                //       <p style={styles.ingredientListTitle}>🛒 מצרכים להשלמה:</p>
-                //       <p style={{ ...styles.ingredientText, color: recipe.missed_ingredients.length > 0 ? '#ef4444' : '#10b981', fontWeight: recipe.missed_ingredients.length > 0 ? 'normal' : 'bold' }}>
-                //         {recipe.missed_ingredients.length > 0 ? recipe.missed_ingredients.join(', ') : 'יש לכם את כל המצרכים! 😍'}
-                //       </p>
-                //     </div>
-                //   </div>
-                // </div>
-                // מתחיל חדש
                 <div
                   key={recipe.id}
                   style={{ ...styles.recipeCard, cursor: 'pointer' }}
@@ -379,55 +351,48 @@ function App() {
                     <div style={styles.recipeHeaderRow}>
                       <h4 style={styles.recipeTitle}>{recipe.title}</h4>
                       <span style={{ ...styles.matchBadge, backgroundColor: recipe.match_score > 70 ? '#dcfce7' : '#fef9c3', color: recipe.match_score > 70 ? '#15803d' : '#a16207' }}>
-                        {recipe.match_score}% התאמה
+                        {recipe.match_score}% Match
                       </span>
                     </div>
                     <div style={{ marginTop: '14px' }}>
-                      <p style={styles.ingredientListTitle}>🥗 פירות וירקות קיימים:</p>
+                      <p style={styles.ingredientListTitle}>🥗 Available Ingredients:</p>
                       <p style={styles.ingredientText}>{recipe.used_ingredients.join(', ')}</p>
                     </div>
                     <div style={{ marginTop: '10px' }}>
-                      <p style={styles.ingredientListTitle}>🛒 מצרכים להשלמה:</p>
+                      <p style={styles.ingredientListTitle}>🛒 Ingredients to Buy:</p>
                       <p style={{ ...styles.ingredientText, color: recipe.missed_ingredients.length > 0 ? '#ef4444' : '#10b981', fontWeight: recipe.missed_ingredients.length > 0 ? 'normal' : 'bold' }}>
-                        {recipe.missed_ingredients.length > 0 ? recipe.missed_ingredients.join(', ') : 'יש לכם את כל המצרכים! 😍'}
+                        {recipe.missed_ingredients.length > 0 ? recipe.missed_ingredients.join(', ') : 'You have all the ingredients! 😍'}
                       </p>
                     </div>
                   </div>
                 </div>
-
-                // נגמר חדשש
               ))}
             </div>
           </div>
         )}
       </main>
 
-
-      {/* מתחיל חדש */}
-    
-    
-    
-    {selectedRecipe && (
+      {/* Detail Modal overlay */}
+      {selectedRecipe && (
         <div style={styles.modalOverlay} onClick={() => setSelectedRecipe(null)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <button style={styles.closeButton} onClick={() => setSelectedRecipe(null)}>✖ סגור</button>
+            <button style={styles.closeButton} onClick={() => setSelectedRecipe(null)}>✖ Close</button>
             
             <h2 style={{marginTop: 0}}>{selectedRecipe.title}</h2>
             {selectedRecipe.image && <img src={selectedRecipe.image} alt={selectedRecipe.title} style={{width: '100%', borderRadius: '12px'}} />}
             
-            <p><strong>⏱️ זמן הכנה:</strong> {selectedRecipe.readyInMinutes ? `${selectedRecipe.readyInMinutes} דקות` : 'לא צוין'}</p>
+            <p><strong>⏱️ Ready in:</strong> {selectedRecipe.readyInMinutes ? `${selectedRecipe.readyInMinutes} minutes` : 'Not specified'}</p>
             
-            <h3>👨‍🍳 הוראות הכנה:</h3>
-            <div dangerouslySetInnerHTML={{ __html: selectedRecipe.instructions || 'אין הוראות זמינות למתכון זה.' }} />
+            <h3>👨‍🍳 Instructions:</h3>
+            <div dangerouslySetInnerHTML={{ __html: selectedRecipe.instructions || 'No instructions available for this recipe.' }} />
           </div>
         </div>
-      )}
-      {/* נגמר חדש */}
-    
-    
+
+)}
     </div>
   );
 }
+
 const styles = {
   container: {
     fontFamily: "'Assistant', 'Varela Round', sans-serif",
@@ -443,7 +408,7 @@ const styles = {
   },
   header: {
     textAlign: 'center',
-    marginBottom: '50px' /* הגדלת הריווח מתחת לכל הבלוק העליון */
+    marginBottom: '50px'
   },
   badgeTop: {
     display: 'inline-block',
@@ -460,7 +425,7 @@ const styles = {
     fontSize: '2.8rem',
     color: '#3E3935',
     fontWeight: '800',
-    margin: '0 0 25px 0', /* הגדלת הריווח המדויק בין הכותרת למלל שמתחתיה */
+    margin: '0 0 25px 0',
     letterSpacing: '-0.5px'
   },
   subtitle: {
@@ -565,7 +530,7 @@ const styles = {
   tagsContainer: { display: 'flex', gap: '12px', flexWrap: 'wrap' },
   tag: {
     padding: '10px 24px',
-    borderRadius: '12px', /* שינוי לפינות המעוגלות האחידות שלכן */
+    borderRadius: '12px',
     cursor: 'pointer',
     border: '1px solid',
     fontWeight: '600',
@@ -638,7 +603,7 @@ const styles = {
   },
   recipeImage: { width: '200px', objectFit: 'cover' },
   recipeContent: { padding: '28px', flex: 1 },
-  recipeHeaderRow: { display: 'flex', justifycontent: 'space-between', alignItems: 'center' },
+  recipeHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }, // fixed typo here
   recipeTitle: { fontSize: '1.4rem', fontWeight: '800', color: '#3E3935', margin: 0 },
   matchBadge: {
     padding: '6px 14px',
@@ -654,7 +619,6 @@ const styles = {
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' },
   modalContent: { backgroundColor: '#fff', padding: '30px', borderRadius: '24px', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto', position: 'relative' },
   closeButton: { position: 'absolute', top: '15px', right: '15px', background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }
-
 };
 
 export default App;
